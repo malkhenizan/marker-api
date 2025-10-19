@@ -13,40 +13,38 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
     PIP_DEFAULT_TIMEOUT=100
 
-#
-# --- START OF FIX ---
-#
 # Install system dependencies
-# This is the corrected block
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    # Add essentials
     build-essential \
     curl \
-    # Add dependencies for libGL and other libraries
     libgl1-mesa-glx \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
     libxrender1 \
-    # Clean up
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-#
-# --- END OF FIX ---
-#
 
-# Copy the requirements file into the container
-COPY pyproject.toml poetry.lock* ./
+#
+# --- START OF FIX (Poetry) ---
+#
+# Copy ONLY the pyproject.toml file
+# By ignoring poetry.lock, we force Poetry to resolve fresh dependencies
+COPY pyproject.toml ./
 
 # Install poetry
 RUN pip install poetry
 
-# Install project dependencies
-# --no-root is important to only install dependencies
+# Install project dependencies (without the old lock file)
+# We remove '--no-root' so the 'marker_api' package itself is installed
 RUN poetry config virtualenvs.create false \
-    && poetry install --no-dev --no-root --no-interaction
+    && poetry install --no-dev --no-interaction
+#
+# --- END OF FIX ---
+#
 
 # Copy the entire project source code into the container
+# This will overwrite the single pyproject.toml we copied earlier, which is fine
 COPY . .
 
 # Expose the port the app runs on
